@@ -14,7 +14,8 @@ import {
 import {
 	trim, isNormal, isArray, inArray,
 	pInt, pString, plainToHtml,
-	windowResize, findEmailAndLinks
+	windowResize, findEmailAndLinks,
+	getRealHeight
 } from 'Common/Utils';
 
 import {
@@ -35,6 +36,7 @@ import {MESSAGE_BODY_CACHE_LIMIT} from 'Common/Consts';
 import {data as GlobalsData, $div} from 'Common/Globals';
 import {mailBox, notificationMailIcon} from 'Common/Links';
 import {i18n, getNotification} from 'Common/Translator';
+import {momentNowUnix} from 'Common/Momentor';
 
 import * as MessageHelper from 'Helper/Message';
 import {MessageModel} from 'Model/Message';
@@ -42,9 +44,11 @@ import {MessageModel} from 'Model/Message';
 import {setHash} from 'Knoin/Knoin';
 
 import AppStore from 'Stores/User/App';
+import AccountStore from 'Stores/User/Account';
 import FolderStore from 'Stores/User/Folder';
 import PgpStore from 'Stores/User/Pgp';
 import SettingsStore from 'Stores/User/Settings';
+import NotificationStore from 'Stores/User/Notification';
 
 import {getApp} from 'Helper/Apps/User';
 
@@ -145,8 +149,10 @@ class MessageUserStore
 		this.messageListCheckedOrSelected = ko.computed(() => {
 			const
 				checked = this.messageListChecked(),
-				selectedMessage = this.selectorMessageSelected();
-			return _.union(checked, selectedMessage ? [selectedMessage] : []);
+				selectedMessage = this.selectorMessageSelected(),
+				focusedMessage = this.selectorMessageFocused();
+
+			return _.union(checked, selectedMessage ? [selectedMessage] : [], focusedMessage ? [focusedMessage] : []);
 		});
 
 		this.messageListCheckedOrSelectedUidsWithSubMails = ko.computed(() => {
@@ -253,21 +259,18 @@ class MessageUserStore
 		{
 			if (isArray(newMessages) && 0 < newMessages.length)
 			{
-				const
-					len = newMessages.length,
-					NotificationStore = require('Stores/User/Notification');
-
 				_.each(newMessages, (item) => {
 					addNewMessageCache(folder, item.Uid);
 				});
 
 				NotificationStore.playSoundNotification();
 
+				const len = newMessages.length;
 				if (3 < len)
 				{
 					NotificationStore.displayDesktopNotification(
 						notificationMailIcon(),
-						require('Stores/User/Account').email(),
+						AccountStore.email(),
 						i18n('MESSAGE_LIST/NEW_MESSAGE_NOTIFICATION', {
 							'COUNT': len
 						}),
@@ -303,7 +306,7 @@ class MessageUserStore
 	 * @param {string} fromFolderFullNameRaw
 	 * @param {Array} uidForRemove
 	 * @param {string=} toFolderFullNameRaw = ''
-	 * @param {boolean=} bCocopypy = false
+	 * @param {boolean=} copy = false
 	 */
 	removeMessagesFromList(fromFolderFullNameRaw, uidForRemove, toFolderFullNameRaw = '', copy = false) {
 
@@ -459,7 +462,14 @@ class MessageUserStore
 			{
 				$oList.each(function() {
 					const $this = $(this); // eslint-disable-line no-invalid-this
-					if ('' !== trim($this.text()))
+
+					let h = $this.height();
+					if (0 === h)
+					{
+						h = getRealHeight($this);
+					}
+
+					if ('' !== trim($this.text()) && (0 === h || 100 < h))
 					{
 						$this.addClass('rl-bq-switcher hidden-bq');
 						$('<span class="rlBlockquoteSwitcher"><i class="icon-ellipsis" /></span>')
@@ -477,13 +487,14 @@ class MessageUserStore
 	}
 
 	/**
-	 * @param {Object} oMessageTextBody
+	 * @param {Object} messageTextBody
+	 * @param {Object} message
 	 */
-	initOpenPgpControls(oMessageTextBody, oMessage) {
-		if (oMessageTextBody && oMessageTextBody.find)
+	initOpenPgpControls(messageTextBody, message) {
+		if (messageTextBody && messageTextBody.find)
 		{
-			oMessageTextBody.find('.b-plain-openpgp:not(.inited)').each(function() {
-				PgpStore.initMessageBodyControls($(this), oMessage); // eslint-disable-line no-invalid-this
+			messageTextBody.find('.b-plain-openpgp:not(.inited)').each(function() {
+				PgpStore.initMessageBodyControls($(this), message); // eslint-disable-line no-invalid-this
 			});
 		}
 	}
@@ -551,7 +562,7 @@ class MessageUserStore
 							isHtml = false;
 							resultHtml = plainToHtml(data.Result.Plain.toString(), false);
 
-							if ((message.isPgpSigned() || message.isPgpEncrypted()) && require('Stores/User/Pgp').capaOpenPGP())
+							if ((message.isPgpSigned() || message.isPgpEncrypted()) && PgpStore.capaOpenPGP())
 							{
 								plain = pString(data.Result.Plain);
 
@@ -657,7 +668,7 @@ class MessageUserStore
 				if (message.unseen() || message.hasUnseenSubMessage())
 				{
 					getApp().messageListAction(
-						message.folderFullNameRaw, message.uid, MessageSetAction.SetSeen, [message]);
+						message.folderFullNameRaw, MessageSetAction.SetSeen, [message]);
 				}
 
 				if (isNew)
@@ -763,7 +774,7 @@ class MessageUserStore
 	}
 
 	/**
-	 * @param {Array} aList
+	 * @param {Array} list
 	 * @returns {string}
 	 */
 	calculateMessageListHash(list) {
@@ -780,7 +791,7 @@ class MessageUserStore
 
 			const
 				list = [],
-				utc = require('Common/Momentor').momentNowUnix(),
+				utc = momentNowUnix(),
 				iCount = pInt(data.Result.MessageResultCount),
 				iOffset = pInt(data.Result.Offset);
 
@@ -876,4 +887,4 @@ class MessageUserStore
 	}
 }
 
-module.exports = new MessageUserStore();
+export default new MessageUserStore();

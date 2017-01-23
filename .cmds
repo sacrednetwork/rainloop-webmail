@@ -1,12 +1,14 @@
 
+# yarn
+yarn install
+yarn upgrade xxx@1.2.3
+
 # transifex
 tx pull -a
 
-# dependencies checker
+# dependencies checker (checking only)
 npm-check --skip-unused --save-exact
-
-# dependencies locker
-npm shrinkwrap --dev
+yarn outdated
 
 # webpack
 webpack --color --watch

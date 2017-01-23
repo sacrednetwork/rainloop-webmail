@@ -40,7 +40,7 @@ module.exports = function(publicPath, pro, es6) {
 		],
 		resolve: {
 			modules: [devPath, 'node_modules'],
-			extensions: ['', '.js'],
+			extensions: ['.js'],
 			alias: {
 				'Opentip': __dirname  + '/dev/External/Opentip.js',
 				'ko': __dirname  + '/dev/External/ko.js'
@@ -50,9 +50,9 @@ module.exports = function(publicPath, pro, es6) {
 			loaders: [
 				{
 					test: /\.js$/,
-					loader: 'babel',
+					loader: 'babel-loader',
 					include: [devPath],
-					query: !es6 ? {
+					options: !es6 ? {
 						cacheDirectory: true,
 						presets: [['es2015', {loose: loose, modules: false}], 'es2016', 'stage-0'],
 						plugins: ['transform-runtime', 'transform-decorators-legacy']
@@ -110,17 +110,16 @@ module.exports = function(publicPath, pro, es6) {
 				},
 				{
 					test: /\.(html|css)$/,
-					loader: 'raw',
+					loader: 'raw-loader',
 					include: [devPath]
 				},
 				{
 					test: /\.json$/,
-					loader: 'json',
+					loader: 'json-loader',
 					include: [devPath]
 				}
 			]
 		},
-		eslint: {},
 		externals: {
 			'window': 'window',
 			'progressJs': 'window.progressJs',

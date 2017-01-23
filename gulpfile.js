@@ -167,8 +167,8 @@ cfg.paths.staticMinJS = 'rainloop/v/' + cfg.devVersion + '/static/js/min/';
 cfg.paths.staticCSS = 'rainloop/v/' + cfg.devVersion + '/static/css/';
 cfg.paths.momentLocales = 'rainloop/v/' + cfg.devVersion + '/app/localization/moment/';
 
-cfg.paths.asserts = {
-	src: 'asserts/**/*.*'
+cfg.paths.assets = {
+	src: 'assets/**/*.*'
 };
 
 cfg.paths.less = {
@@ -269,12 +269,12 @@ cfg.paths.js = {
 
 // assers
 
-gulp.task('asserts:clean', function() {
+gulp.task('assets:clean', function() {
 	return cleanDir(cfg.paths.static);
 });
 
-gulp.task('asserts', function() {
-	return gulp.src(cfg.paths.asserts.src)
+gulp.task('assets', function() {
+	return gulp.src(cfg.paths.assets.src)
 		.pipe(gulp.dest(cfg.paths.static));
 });
 
@@ -284,7 +284,7 @@ gulp.task('css:clean', function() {
 	return cleanDir(cfg.paths.staticCSS + '/*.css');
 });
 
-gulp.task('css:main', ['asserts'], function() {
+gulp.task('css:main', ['assets'], function() {
 	var autoprefixer = require('gulp-autoprefixer'),
 		less = require('gulp-less'),
 		lessFilter = filter('**/*.less', {restore: true}),
@@ -316,18 +316,18 @@ gulp.task('css:social', function() {
 });
 
 gulp.task('css:main:min', ['css:main'], function() {
-	var cleanCSS = require('gulp-clean-css');
+	var cleanCss = require('gulp-clean-css');
 	return gulp.src(cfg.paths.staticCSS + cfg.paths.css.main.name)
-		.pipe(cleanCSS())
+		.pipe(cleanCss())
 		.pipe(rename({suffix: '.min'}))
 		.pipe(eol('\n', true))
 		.pipe(gulp.dest(cfg.paths.staticCSS));
 });
 
 gulp.task('css:social:min', ['css:social'], function() {
-	var cleanCSS = require('gulp-clean-css');
+	var cleanCss = require('gulp-clean-css');
 	return gulp.src(cfg.paths.staticCSS + cfg.paths.css.social.name)
-		.pipe(cleanCSS())
+		.pipe(cleanCss())
 		.pipe(rename({suffix: '.min'}))
 		.pipe(eol('\n', true))
 		.pipe(gulp.dest(cfg.paths.staticCSS));
@@ -409,7 +409,6 @@ gulp.task('js:es5:min', ['js:app', 'js:admin'], function() {
 gulp.task('js:es6:min', ['js:app', 'js:admin'], function() {
 	return cfg.next ? gulp.src(cfg.paths.staticJS + '*.next.js')
 		.pipe(replace(/"rainloop\/v\/([^\/]+)\/static\/js\/"/g, '"rainloop/v/$1/static/js/min/"'))
-	// TODO
 		.pipe(eol('\n', true))
 		.pipe(rename({suffix: '.min'}))
 		.pipe(gulp.dest(cfg.paths.staticMinJS))
@@ -615,7 +614,7 @@ gulp.task('css', ['css:min']);
 
 gulp.task('vendors', ['moment', 'ckeditor', 'fontastic', 'lightgallery']);
 
-gulp.task('clean', ['js:clean', 'css:clean', 'asserts:clean']);
+gulp.task('clean', ['js:clean', 'css:clean', 'assets:clean']);
 
 gulp.task('rainloop:start', ['rainloop:copy', 'rainloop:setup']);
 

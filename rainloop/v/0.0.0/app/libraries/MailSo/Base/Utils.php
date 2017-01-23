@@ -1721,7 +1721,7 @@ END;
 	 */
 	public static function UrlSafeBase64Encode($sValue)
 	{
-		return \rtrim(\strtr(\base64_encode(\trim($sValue)), '+/', '-_'), '=');
+		return \rtrim(\strtr(\base64_encode($sValue), '+/', '-_'), '=');
 	}
 
 	/**
@@ -1732,7 +1732,7 @@ END;
 	public static function UrlSafeBase64Decode($sValue)
 	{
 		$sValue = \rtrim(\strtr($sValue, '-_.', '+/='), '=');
-		return \MailSo\Base\Utils::Base64Decode(\str_pad($sValue, \strlen($sValue) % 4, '=', STR_PAD_RIGHT));
+		return \MailSo\Base\Utils::Base64Decode(\str_pad($sValue, \strlen($sValue) + (\strlen($sValue) % 4), '=', STR_PAD_RIGHT));
 	}
 
 	/**
@@ -2428,6 +2428,7 @@ END;
 		{
 			include_once MAILSO_LIBRARY_ROOT_PATH.'Vendors/Net/IDNA2.php';
 			$oIdn = new \Net_IDNA2();
+			$oIdn->setParams('utf8', true);
 		}
 
 		return $oIdn;
@@ -2441,7 +2442,7 @@ END;
 	 */
 	public static function IdnToUtf8($sStr, $bLowerIfAscii = false)
 	{
-		if (0 < \strlen($sStr) && \preg_match('/(^|\.)xn--/i', $sStr))
+		if (0 < \strlen($sStr) && \preg_match('/(^|\.|@)xn--/i', $sStr))
 		{
 			try
 			{

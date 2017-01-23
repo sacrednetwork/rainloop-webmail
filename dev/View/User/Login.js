@@ -1,5 +1,6 @@
 
 import window from 'window';
+import $ from '$';
 import _ from '_';
 import ko from 'ko';
 
@@ -17,6 +18,7 @@ import {
 	convertLangName, triggerAutocompleteInputChange
 } from 'Common/Utils';
 
+import {$win} from 'Common/Globals';
 import {socialFacebook, socialGoogle, socialTwitter} from 'Common/Links';
 import {getNotification, getNotificationFromResponse, reload as translatorReload} from 'Common/Translator';
 
@@ -36,7 +38,7 @@ import {view, command, ViewType, routeOff, showScreenPopup} from 'Knoin/Knoin';
 import {AbstractViewNext} from 'Knoin/AbstractViewNext';
 
 @view({
-	name: 'View/User/Login',
+	name: ['View/App/Login', 'View/User/Login'],
 	type: ViewType.Center,
 	templateID: 'Login'
 })
@@ -44,6 +46,8 @@ class LoginUserView extends AbstractViewNext
 {
 	constructor() {
 		super();
+
+		this.hideSubmitButton = !!Settings.appSettingsGet('hideSubmitButton');
 
 		this.welcome = ko.observable(!!Settings.settingsGet('UseLoginWelcomePage'));
 
@@ -59,7 +63,7 @@ class LoginUserView extends AbstractViewNext
 		this.additionalCodeSignMe = ko.observable(false);
 
 		this.logoImg = trim(Settings.settingsGet('LoginLogo'));
-		this.logoPowered = !!Settings.settingsGet('LoginPowered');
+		this.loginPowered = !!Settings.settingsGet('LoginPowered');
 		this.loginDescription = trim(Settings.settingsGet('LoginDescription'));
 
 		this.mobile = !!Settings.appSettingsGet('mobile');
@@ -83,7 +87,6 @@ class LoginUserView extends AbstractViewNext
 
 		this.emailFocus = ko.observable(false);
 		this.passwordFocus = ko.observable(false);
-		this.submitFocus = ko.observable(false);
 
 		this.email.subscribe(() => {
 			this.emailError(false);
@@ -168,27 +171,31 @@ class LoginUserView extends AbstractViewNext
 		}
 	}
 
+	windowOpenFeatures(wh) {
+		return `left=200,top=100,width=${wh},height=${wh},menubar=no,status=no,resizable=yes,scrollbars=yes`;
+	}
+
 	@command((self) => !self.submitRequest() && self.facebookLoginEnabled())
 	facebookCommand() {
-		window.open(socialFacebook(), 'Facebook', 'left=200,top=100,width=500,height=500,menubar=no,status=no,resizable=yes,scrollbars=yes');
+		window.open(socialFacebook(), 'Facebook', this.windowOpenFeatures(500));
 		return true;
 	}
 
 	@command((self) => !self.submitRequest() && self.googleLoginEnabled())
 	googleCommand() {
-		window.open(socialGoogle(), 'Google', 'left=200,top=100,width=550,height=550,menubar=no,status=no,resizable=yes,scrollbars=yes');
+		window.open(socialGoogle(), 'Google', this.windowOpenFeatures(550));
 		return true;
 	}
 
 	@command((self) => !self.submitRequest() && self.googleFastLoginEnabled())
 	googleFastCommand() {
-		window.open(socialGoogle(true), 'Google', 'left=200,top=100,width=550,height=550,menubar=no,status=no,resizable=yes,scrollbars=yes');
+		window.open(socialGoogle(true), 'Google', this.windowOpenFeatures(550));
 		return true;
 	}
 
 	@command((self) => !self.submitRequest() && self.twitterLoginEnabled())
 	twitterCommand() {
-		window.open(socialTwitter(), 'Twitter', 'left=200,top=100,width=500,height=500,menubar=no,status=no,resizable=yes,scrollbars=yes');
+		window.open(socialTwitter(), 'Twitter', this.windowOpenFeatures(500));
 		return true;
 	}
 
@@ -252,11 +259,15 @@ class LoginUserView extends AbstractViewNext
 		}
 
 		this.submitRequest(true);
+		$win.trigger('rl.tooltips.diactivate');
 
 		const
 			fLoginRequest = (sLoginPassword) => {
 
 				Remote.login((sResult, oData) => {
+
+					$win.trigger('rl.tooltips.diactivate');
+					$win.trigger('rl.tooltips.activate');
 
 					if (StorageResultType.Success === sResult && oData && 'Login' === oData.Action)
 					{
@@ -335,7 +346,7 @@ class LoginUserView extends AbstractViewNext
 	onShowWithDelay() {
 		if ('' !== this.email() && '' !== this.password())
 		{
-			this.submitFocus(true);
+			this.passwordFocus(true);
 		}
 		else if ('' === this.email())
 		{
@@ -352,7 +363,6 @@ class LoginUserView extends AbstractViewNext
 	}
 
 	onHide() {
-		this.submitFocus(false);
 		this.emailFocus(false);
 		this.passwordFocus(false);
 	}
@@ -442,6 +452,11 @@ class LoginUserView extends AbstractViewNext
 		}, Magics.Time50ms);
 
 		triggerAutocompleteInputChange(true);
+
+		if (Settings.appSettingsGet('activeBackgroud'))
+		{
+			this.initActiveBackgroud();
+		}
 	}
 
 	submitForm() {
@@ -465,6 +480,28 @@ class LoginUserView extends AbstractViewNext
 		}
 
 		return true;
+	}
+
+	initActiveBackgroud() {
+
+		const
+			$bg = $('#rl-bg'),
+			movementStrength = 25,
+			winHeight = $win.height(),
+			winWidth = $win.width(),
+			height = movementStrength / winHeight,
+			width = movementStrength / winWidth,
+			winHeightHalf = winHeight / 2,
+			winWidthHalf = winWidth / 2;
+
+		$bg.addClass('animated');
+
+		$('#rl-app').on('mousemove', _.throttle((e) => {
+			$bg.css({
+				top: height * (e.pageY - winHeightHalf) * -1 - movementStrength,
+				left: width * (e.pageX - winWidthHalf) * -1 - movementStrength
+			});
+		}, 1));
 	}
 }
 

@@ -75,7 +75,7 @@ class HtmlUtils
 		@$oDom->loadHTML('<'.'?xml version="1.0" encoding="utf-8"?'.'>'.
 			'<html '.$sHtmlAttrs.'><head>'.
 			'<meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head>'.
-			'<body '.$sBodyAttrs.'><div data-wrp="rainloop">'.\MailSo\Base\Utils::Utf8Clear($sText).'</div></body></html>');
+			'<body '.$sBodyAttrs.'>'.\MailSo\Base\Utils::Utf8Clear($sText).'</body></html>');
 
 		@$oDom->normalizeDocument();
 
@@ -117,7 +117,7 @@ class HtmlUtils
 	/**
 	 * @param \DOMDocument|\DOMElement $oElem
 	 *
-	 * @return type
+	 * @return string
 	 */
 	private static function domToString($oElem, $oDom = null)
 	{
@@ -156,7 +156,7 @@ class HtmlUtils
 	 *
 	 * @return string
 	 */
-	public static function GetTextFromDom($oDom, $bWrapByFakeHtmlAndBodyDiv = true)
+	public static function GetTextFromDom_($oDom, $bWrapByFakeHtmlAndBodyDiv = true)
 	{
 		$sResult = '';
 
@@ -196,7 +196,6 @@ class HtmlUtils
 			else
 			{
 				$sResult = self::domToString($oDiv, $oDom);
-				$sResult = \MailSo\Base\HtmlUtils::UnWrapTag($sResult);
 			}
 		}
 		else
@@ -211,33 +210,53 @@ class HtmlUtils
 	}
 
 	/**
-	 * @param string $sHtml
-	 * @param string $sTag = 'div'
-	 * @param string $iUnwrapCount = 10
+	 * @param \DOMDocument $oDom
+	 * @param bool $bWrapByFakeHtmlAndBodyDiv = true
 	 *
 	 * @return string
 	 */
-	public static function UnWrapTag($sHtml, $sTag = 'div', $iUnwrapCount = 5)
+	public static function GetTextFromDom($oDom, $bWrapByFakeHtmlAndBodyDiv = true)
 	{
-		$iUnwrapCount = 0 < $iUnwrapCount ? $iUnwrapCount : 1;
-		$iUnwrapCount = 10 < $iUnwrapCount ? 10 : $iUnwrapCount;
+		$sResult = '';
 
-		$sTag = $sTag ? $sTag : 'div';
-		$iTagLen = \strlen($sTag);
+		$oHtml = $oDom->getElementsByTagName('html')->item(0);
+		$oBody = $oDom->getElementsByTagName('body')->item(0);
 
-		while (0 < $iUnwrapCount)
+		foreach ($oBody->childNodes as $oChild)
 		{
-			$sHtml = \trim($sHtml);
-			if (0 === \strpos($sHtml, '<'.$sTag.'>') && '</'.$sTag.'>' === \substr($sHtml, -3 - $iTagLen))
-			{
-				$sHtml = \substr(\substr($sHtml, 2 + $iTagLen), 0, -3 - $iTagLen);
-				$sHtml = \trim($sHtml);
-			}
-
-			$iUnwrapCount--;
+			$sResult .= $oDom->saveHTML($oChild);
 		}
 
-		return $sHtml;
+		if ($bWrapByFakeHtmlAndBodyDiv)
+		{
+			$aHtmlAttrs = \MailSo\Base\HtmlUtils::GetElementAttributesAsArray($oHtml);
+			$aBodylAttrs = \MailSo\Base\HtmlUtils::GetElementAttributesAsArray($oBody);
+
+			$oWrapHtml = $oDom->createElement('div');
+			$oWrapHtml->setAttribute('data-x-div-type', 'html');
+			foreach ($aHtmlAttrs as $sKey => $sValue)
+			{
+				$oWrapHtml->setAttribute($sKey, $sValue);
+			}
+
+			$oWrapDom = $oDom->createElement('div', '___xxx___');
+			$oWrapDom->setAttribute('data-x-div-type', 'body');
+			foreach ($aBodylAttrs as $sKey => $sValue)
+			{
+				$oWrapDom->setAttribute($sKey, $sValue);
+			}
+
+			$oWrapHtml->appendChild($oWrapDom);
+
+			$sWrp = $oDom->saveHTML($oWrapHtml);
+
+			$sResult = \str_replace('___xxx___', $sResult, $sWrp);
+		}
+
+		$sResult = \str_replace(\MailSo\Base\HtmlUtils::$KOS, ':', $sResult);
+		$sResult = \MailSo\Base\Utils::StripSpaces($sResult);
+
+		return $sResult;
 	}
 
 	/**
@@ -261,17 +280,6 @@ class HtmlUtils
 			$sBodyAttrs = $aMatch[1];
 		}
 
-//		$iPos = \stripos($sHtml, '<body>');
-//		if (0 < $iPos)
-//		{
-//			$sHtml = \substr($sHtml, $iPos);
-//		}
-//		else
-//		{
-//			$iPos = \stripos($sHtml, '<body ');
-//			$sHtml = 0 < $iPos ? \substr($sHtml, $iPos) : $sHtml;
-//		}
-
 		$sHtml = \preg_replace('/<head([^>]*)>/si', '', $sHtml);
 		$sHtml = \preg_replace('/<body([^>]*)>/si', '', $sHtml);
 		$sHtml = \preg_replace('/<\/body>/i', '', $sHtml);
@@ -287,8 +295,6 @@ class HtmlUtils
 
 		$sHtmlAttrs = trim($sHtmlAttrs);
 		$sBodyAttrs = trim($sBodyAttrs);
-
-		$sHtml = \MailSo\Base\HtmlUtils::UnWrapTag($sHtml);
 
 		return $sHtml;
 	}
@@ -1242,7 +1248,8 @@ class HtmlUtils
 
 			if (\MailSo\Config::$HtmlStrictDebug && 0 < \count($aRemovedAttrs))
 			{
-				unset($aRemovedAttrs['class'], $aRemovedAttrs['target'], $aRemovedAttrs['id'], $aRemovedAttrs['name']);
+				unset($aRemovedAttrs['class'], $aRemovedAttrs['target'], $aRemovedAttrs['id'], $aRemovedAttrs['name'],
+					$aRemovedAttrs['itemprop'], $aRemovedAttrs['itemscope'], $aRemovedAttrs['itemtype']);
 
 				$aRemovedAttrs = \array_keys($aRemovedAttrs);
 				if (0 < \count($aRemovedAttrs))

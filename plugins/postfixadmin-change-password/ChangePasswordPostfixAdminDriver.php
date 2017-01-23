@@ -264,20 +264,20 @@ class ChangePasswordPostfixAdminDriver implements \RainLoop\Providers\ChangePass
 			default:
 			case 'plain':
 			case 'cleartext':
-				$sResult = $sPassword;
+				$sResult = '{PLAIN}' . $sPassword;
 				break;
 
 			case 'md5crypt':
 				include_once __DIR__.'/md5crypt.php';
-				$sResult = md5crypt($sPassword);
+				$sResult = '{MD5-CRYPT}' . md5crypt($sPassword);
 				break;
 
 			case 'md5':
-				$sResult = md5($sPassword);
+				$sResult = '{PLAIN-MD5}' . md5($sPassword);
 				break;
 
 			case 'system':
-				$sResult = crypt($sPassword);
+				$sResult = '{CRYPT}' . crypt($sPassword);
 				break;
 
 			case 'sha256-crypt':
